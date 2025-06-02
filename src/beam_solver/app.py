@@ -3,11 +3,15 @@ from ngapp.components import *
 
 
 class MyVisComp(Div):
-    def __init__(self):
-        self.webgpu = WebgpuComponent(id="visualization")
+    def __init__(self, deformation_slider):
+        self.webgpu = WebgpuComponent()
+        self.deformation_slider = deformation_slider
         super().__init__(
-            self.webgpu, ui_style="border: 1px solid #ccc; border-radius: 5px;"
+            self.webgpu,
+            ui_style="border: 1px solid #ccc; border-radius: 5px;",
+            id="visualization",
         )
+        self.on_load(self.__on_load)
 
     def draw(self, mesh, deformation, vonMises):
         import ngsolve_webgpu as nw
@@ -16,12 +20,20 @@ class MyVisComp(Div):
         self.meshdata.deformation_data = nw.FunctionData(
             self.meshdata, deformation, order=5
         )
+        self.meshdata.deformation_scale = self.deformation_slider.ui_model_value
         vMdata = nw.FunctionData(self.meshdata, vonMises, order=5)
         colormap = nw.Colormap(colormap="viridis")
         renderer = nw.CFRenderer(vMdata, colormap=colormap)
         colorbar = nw.Colorbar(colormap)
         wireframe = nw.MeshWireframe2d(self.meshdata)
-        self.webgpu.draw([wireframe, renderer, colorbar], store=True)
+        self.webgpu.draw([wireframe, renderer, colorbar])
+        self.storage.set("data", (mesh, deformation, vonMises), use_pickle=True)
+
+    def __on_load(self):
+        data = self.storage.get("data")
+        if data:
+            mesh, deformation, vonMises = data
+            self.draw(mesh, deformation, vonMises)
 
 
 class BeamSolver(App):
@@ -78,7 +90,7 @@ class BeamSolver(App):
         )
         self.deform_slider.on_update_model_value(self.update_deformation_slider)
         self.button.on("click", self.solve)
-        self.vis_comp = MyVisComp()
+        self.vis_comp = MyVisComp(self.deform_slider)
         self.component = Div(
             toolbar,
             QCard(
@@ -137,4 +149,3 @@ class BeamSolver(App):
             ngs.sqrt(3 * ngs.InnerProduct(stress(strain(u)), stress(strain(u))))
         )
         self.vis_comp.draw(mesh, deformation, vonMises)
-        self.vis_comp.meshdata.deformation_scale = self.deform_slider.ui_model_value
