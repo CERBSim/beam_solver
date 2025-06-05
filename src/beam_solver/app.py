@@ -4,13 +4,23 @@ from ngapp.components import *
 
 class MyVisComp(Div):
     def __init__(self):
-        self.webgpu = WebgpuComponent(id="visualization")
+        self.webgpu = WebgpuComponent()
         super().__init__(
-            self.webgpu, ui_style="border: 1px solid #ccc; border-radius: 5px;"
+            self.webgpu,
+            ui_style="border: 1px solid #ccc; border-radius: 5px;",
+            id="vis-comp",
         )
+        self.on_load(self.__on_load)
+
+    def __on_load(self):
+        sol = self.storage.get("solution")
+        if sol:
+            self.draw(*sol)
 
     def draw(self, mesh, deformation, vonMises):
         import ngsolve_webgpu as nw
+
+        self.storage.set("solution", (mesh, deformation, vonMises), use_pickle=True)
 
         self.meshdata = nw.MeshData(mesh)
         self.meshdata.deformation_data = nw.FunctionData(
@@ -21,7 +31,7 @@ class MyVisComp(Div):
         renderer = nw.CFRenderer(vMdata, colormap=colormap)
         colorbar = nw.Colorbar(colormap)
         wireframe = nw.MeshWireframe2d(self.meshdata)
-        self.webgpu.draw([wireframe, renderer, colorbar], store=True)
+        self.webgpu.draw([wireframe, renderer, colorbar])
 
 
 class BeamSolver(App):
@@ -92,6 +102,7 @@ class BeamSolver(App):
                 ui_flat=True,
             ),
         )
+        self.component.on_load(self.update_deformation_slider)
 
     def update_deformation_slider(self):
         self.deform_slider.ui_label_value = (
