@@ -103,7 +103,7 @@ class BeamSolver(App):
             ),
         )
         self.component.on_load(self.update_deformation_slider)
-        self.component.add_keybinding("q", self.quit)
+        self.component.add_keybinding("ctrl+q", self.quit)
 
     def update_deformation_slider(self):
         self.deform_slider.ui_label_value = (
